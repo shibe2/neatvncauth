@@ -291,7 +291,7 @@ static void init_security_types(struct nvnc* server)
 	}
 #endif
 
-	if (!(server->auth_flags & NVNC_AUTH_REQUIRE_AUTH)) {
+	if (!server->auth_flags) {
 		ADD_SECURITY_TYPE(RFB_SECURITY_TYPE_NONE);
 	}
 
