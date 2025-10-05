@@ -51,6 +51,7 @@ enum nvnc_client_state {
 	VNC_CLIENT_STATE_WAITING_FOR_VENCRYPT_PLAIN_AUTH,
 #endif
 #ifdef HAVE_CRYPTO
+	VNC_CLIENT_STATE_WAITING_FOR_VNCAUTH_RESPONSE,
 	VNC_CLIENT_STATE_WAITING_FOR_APPLE_DH_RESPONSE,
 	VNC_CLIENT_STATE_WAITING_FOR_RSA_AES_PUBLIC_KEY,
 	VNC_CLIENT_STATE_WAITING_FOR_RSA_AES_CHALLENGE,
@@ -137,6 +138,8 @@ struct nvnc_client {
 	struct aml_idle* close_task;
 
 #ifdef HAVE_CRYPTO
+	unsigned char vncauth_expected_response[16];
+
 	struct crypto_key* apple_dh_secret;
 
 	struct {
@@ -201,6 +204,9 @@ struct nvnc {
 #endif
 
 #ifdef HAVE_CRYPTO
+	uint32_t password_sched[32];
+	bool has_vnc_password;
+
 	struct crypto_rsa_pub_key* rsa_pub;
 	struct crypto_rsa_priv_key* rsa_priv;
 #endif

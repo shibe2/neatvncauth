@@ -161,6 +161,7 @@ if nettle.found() and hogweed.found() and gmp.found()
 	enable_websocket = true
 	config.set('HAVE_CRYPTO', true)
 	sources += [
+		'src/crypto/d3des.c',
 		'src/crypto/random.c',
 		'src/crypto/nettle/cipher.c',
 		'src/crypto/nettle/hash.c',
@@ -169,6 +170,7 @@ if nettle.found() and hogweed.found() and gmp.found()
 		'src/stream/rsa-aes.c',
 		'src/auth/apple-dh.c',
 		'src/auth/rsa-aes.c',
+		'src/auth/vncauth.c',
 	]
 	if not(have_random)
 		error('No random generator available')

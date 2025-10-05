@@ -62,6 +62,7 @@
 
 #ifdef HAVE_CRYPTO
 #include "crypto.h"
+#include "auth/vncauth.h"
 #include "auth/apple-dh.h"
 #include "auth/rsa-aes.h"
 #endif
@@ -267,9 +268,7 @@ static void init_security_types(struct nvnc* server)
 	if (server->n_security_types > 0)
 		return;
 
-	if (server->auth_flags & NVNC_AUTH_REQUIRE_AUTH) {
-		assert(server->auth_fn);
-
+	if (server->auth_fn) {
 #ifdef ENABLE_TLS
 		if (server->tls_creds) {
 			ADD_SECURITY_TYPE(RFB_SECURITY_TYPE_VENCRYPT);
@@ -284,7 +283,15 @@ static void init_security_types(struct nvnc* server)
 			ADD_SECURITY_TYPE(RFB_SECURITY_TYPE_APPLE_DH);
 		}
 #endif
-	} else {
+	}
+
+#ifdef HAVE_CRYPTO
+	if (server->has_vnc_password && !(server->auth_flags & NVNC_AUTH_REQUIRE_ENCRYPTION)) {
+		ADD_SECURITY_TYPE(RFB_SECURITY_TYPE_VNC_AUTH);
+	}
+#endif
+
+	if (!(server->auth_flags & NVNC_AUTH_REQUIRE_AUTH)) {
 		ADD_SECURITY_TYPE(RFB_SECURITY_TYPE_NONE);
 	}
 
@@ -379,6 +386,10 @@ static int on_security_message(struct nvnc_client* client)
 		break;
 #endif
 #ifdef HAVE_CRYPTO
+	case RFB_SECURITY_TYPE_VNC_AUTH:
+		vncauth_send_challenge(client);
+		client->state = VNC_CLIENT_STATE_WAITING_FOR_VNCAUTH_RESPONSE;
+		break;
 	case RFB_SECURITY_TYPE_APPLE_DH:
 		apple_dh_send_public_key(client);
 		client->state = VNC_CLIENT_STATE_WAITING_FOR_APPLE_DH_RESPONSE;
@@ -1954,6 +1965,8 @@ static int try_read_client_message(struct nvnc_client* client)
 		return vencrypt_handle_message(client);
 #endif
 #ifdef HAVE_CRYPTO
+	case VNC_CLIENT_STATE_WAITING_FOR_VNCAUTH_RESPONSE:
+		return vncauth_handle_response(client);
 	case VNC_CLIENT_STATE_WAITING_FOR_APPLE_DH_RESPONSE:
 		return apple_dh_handle_response(client);
 	case VNC_CLIENT_STATE_WAITING_FOR_RSA_AES_PUBLIC_KEY:
@@ -2938,13 +2951,29 @@ EXPORT
 int nvnc_enable_auth(struct nvnc* self, enum nvnc_auth_flags flags,
 		nvnc_auth_fn auth_fn, void* userdata)
 {
-#if defined(ENABLE_TLS) || defined(HAVE_CRYPTO)
+#if !(defined(ENABLE_TLS) || defined(HAVE_CRYPTO))
+	if (flags || auth_fn)
+		return -1;
+#endif
 	self->auth_flags = flags;
 	self->auth_fn = auth_fn;
 	self->auth_ud = userdata;
 	return 0;
-#endif
+}
+
+EXPORT
+int nvnc_set_password(struct nvnc* self, const char * password)
+{
+#ifdef HAVE_CRYPTO
+	if (password) {
+		vncauth_set_password(self, password);
+	} else {
+		self->has_vnc_password = false;
+	}
+	return 0;
+#else
 	return -1;
+#endif
 }
 
 static bool buffers_are_equal(struct nvnc_fb* a, struct nvnc_fb* b)
