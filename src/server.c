@@ -62,9 +62,9 @@
 
 #ifdef HAVE_CRYPTO
 #include "crypto.h"
-#include "auth/vncauth.h"
 #include "auth/apple-dh.h"
 #include "auth/rsa-aes.h"
+#include "auth/vncauth.h"
 #endif
 
 #ifndef DRM_FORMAT_INVALID

@@ -28,6 +28,7 @@
 #include "config.h"
 
 #ifdef HAVE_CRYPTO
+#include <nettle/des.h>
 #include "crypto.h"
 #endif
 
@@ -204,7 +205,7 @@ struct nvnc {
 #endif
 
 #ifdef HAVE_CRYPTO
-	uint32_t password_sched[32];
+	struct des_ctx password_sched;
 	bool has_vnc_password;
 
 	struct crypto_rsa_pub_key* rsa_pub;

@@ -1,24 +1,36 @@
+#include <nettle/des.h>
+
 #include "auth/auth.h"
 #include "auth/vncauth.h"
 #include "common.h"
-#include "crypto/d3des.h"
 
 void vncauth_set_password(struct nvnc* server, const char* password)
 {
+	uint8_t key[8];
 	size_t len = strlen(password);
-	unsigned char key[8];
-	for (size_t i = 0; i < 8U; ++i)
-		key[i] = i < len ? password[i] : 0;
-	des_set_key(server->password_sched, key, EN0);
+	for (size_t i = 0; i < 8U; ++i) {
+		uint8_t b;
+		if (i < len) {
+			b = password[i];
+			b = ((b & 0xF0) >> 4) | ((b & 0x0F) << 4);
+			b = ((b & 0xCC) >> 2) | ((b & 0x33) << 2);
+			b = ((b & 0xAA) >> 1) | ((b & 0x55) << 1);
+		} else {
+			b = 0;
+		}
+		key [i] = b;
+	}
+	des_fix_parity(8, key, key);
+	des_set_key(&server->password_sched, key);
 	server->has_vnc_password = true;
 }
 
 int vncauth_send_challenge(struct nvnc_client* client)
 {
-	unsigned char challenge[16];
+	uint8_t challenge[16];
 	crypto_random(challenge, 16);
 	for (int i = 0; i < 16; i += 8)
-		des_crypt(client->server->password_sched, challenge + i, client->vncauth_expected_response + i);
+		des_encrypt(&client->server->password_sched, 8, client->vncauth_expected_response + i, challenge + i);
 	return stream_write(client->net_stream, challenge, 16, NULL, NULL);
 }
 
